@@ -48,6 +48,42 @@ public class ReviewsPage extends AbstractPage {
         sortBySelect.select(by.getValue());
     }
 
+    public List<Integer> getVotesList() {
+        return votesList.stream().map(element -> Integer.parseInt(element.getAttribute("data-votes"))).collect(Collectors.toList());
+    }
+
+    interface ElementProcessor<T, R> {
+        R process(T element);
+    }
+
+    public List<Date> getDatesList() {
+        List<Date> resultList;
+        DateFormat format = new SimpleDateFormat("dd MMM yyyy", Locale.US);
+        Calendar calendar = Calendar.getInstance();
+
+        // Define a custom lambda function with generics for date processing
+        ElementProcessor<ExtendedWebElement, Date> dateProcessor = element -> {
+            if (element.getText().contains("ago")) {
+                calendar.setTime(new Date());
+                int timeUnit = element.getText().contains("second") ? Calendar.SECOND :
+                        element.getText().contains("minute") ? Calendar.MINUTE :
+                        element.getText().contains("hour") ? Calendar.HOUR : 0;
+                calendar.add(timeUnit, -Integer.parseInt(element.getText().replaceAll("\\D+", "")));
+                return calendar.getTime();
+            } else {
+                try {
+                    return format.parse(element.getText());
+                } catch (ParseException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+
+        // Use the custom lambda function within the map function
+        resultList = datesList.stream().map(dateProcessor::process).collect(Collectors.toList());
+        return resultList;
+    }
+
     public void voteComment(int index, boolean upvote){
         if (reactionButtons.get(index).isElementNotPresent(THREE_SEC_TIMEOUT)) {
             Assert.fail("Reaction buttons are not present. Maybe you are not logged in or index is out of range.");
